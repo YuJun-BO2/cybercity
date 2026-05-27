@@ -10,6 +10,7 @@ Cyber City 是一個以 Verilog 實作的閉環資源經濟系統。專案模擬
 - [模組職責](#模組職責)
 - [檔案說明](#檔案說明)
 - [執行模擬](#執行模擬)
+- [執行商業區單元測試](#執行商業區單元測試)
 
 ## 專案目錄
 
@@ -125,4 +126,17 @@ vvp cyber_city_tb.vvp
 
 ```text
 通過：Cyber City 在所有模式下都存活 1000 個 clock。
+```
+
+## 執行商業區單元測試
+
+```powershell
+iverilog -g2012 -I src -o commerce_area_tb.vvp src/department_core.v src/commerce_area.v tb/tb_commerce_area.v
+vvp commerce_area_tb.vvp
+```
+
+預期最後會看到：
+
+```text
+通過：commerce_area 單元測試完成。
 ```
