@@ -137,7 +137,7 @@ module tb_cyber_city;
                 (industry_state == `S_DEAD) ||
                 (commerce_state == `S_DEAD) ||
                 (government_state == `S_DEAD)) begin
-                $display("錯誤：有模組在時間 %0t 進入 S_DEAD", $time);
+                $display("ERROR: a module entered S_DEAD at sim_time=%0t", $time);
                 $finish;
             end
         end
@@ -153,11 +153,11 @@ module tb_cyber_city;
         input [`DATA_WIDTH-1:0] commerce;
         begin
             case (mode_id)
-                2'd0: $display("新手模式 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                2'd0: $display("BEGINNER funds=%0d power=%0d water=%0d labor=%0d material=%0d commerce_funds=%0d",
                                 funds, power, water, labor, material, commerce);
-                2'd1: $display("專家模式 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                2'd1: $display("EXPERT funds=%0d power=%0d water=%0d labor=%0d material=%0d commerce_funds=%0d",
                                 funds, power, water, labor, material, commerce);
-                default: $display("6-2挑戰 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                default: $display("CHALLENGE_6_2 funds=%0d power=%0d water=%0d labor=%0d material=%0d commerce_funds=%0d",
                                   funds, power, water, labor, material, commerce);
             endcase
         end
@@ -188,7 +188,7 @@ module tb_cyber_city;
                    e_material, e_commerce);
         print_city(2'd2, c_funds, c_power, c_water, c_labor,
                    c_material, c_commerce);
-        $display("通過：Cyber City 在所有模式下都存活 1000 個 clock。");
+        $display("PASS: Cyber City completed 1000 clock cycles in all modes.");
         $finish;
     end
 

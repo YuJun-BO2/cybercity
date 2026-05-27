@@ -58,7 +58,7 @@ module tb_commerce_area;
         input [8*80-1:0] message;
         begin
             if (!condition) begin
-                $display("錯誤：%0s，時間=%0t", message, $time);
+                $display("ERROR: %0s; sim_time=%0t", message, $time);
                 $finish;
             end
         end
@@ -81,7 +81,7 @@ module tb_commerce_area;
             material_data = amount;
             material_valid = 1'b1;
             @(posedge clk);
-            check(material_ready, "商業區應接受物資輸入");
+            check(material_ready, "commerce_area should accept material input");
             material_valid = 1'b0;
             material_data = 16'd0;
         end
@@ -93,7 +93,7 @@ module tb_commerce_area;
             power_data = amount;
             power_valid = 1'b1;
             @(posedge clk);
-            check(power_ready, "商業區應接受電力輸入");
+            check(power_ready, "commerce_area should accept power input");
             power_valid = 1'b0;
             power_data = 16'd0;
         end
@@ -105,7 +105,7 @@ module tb_commerce_area;
             labor_data = amount;
             labor_valid = 1'b1;
             @(posedge clk);
-            check(labor_ready, "商業區應接受勞動力輸入");
+            check(labor_ready, "commerce_area should accept labor input");
             labor_valid = 1'b0;
             labor_data = 16'd0;
         end
@@ -117,8 +117,8 @@ module tb_commerce_area;
             for (i = 0; i < 8 && !tax_valid; i = i + 1) begin
                 @(posedge clk);
             end
-            check(tax_valid, "商業區應產生稅收 valid");
-            check(tax_data == 16'd10, "商業區稅收應為 10");
+            check(tax_valid, "commerce_area should assert tax_valid");
+            check(tax_data == 16'd10, "commerce_area tax_data should be 10");
         end
     endtask
 
@@ -130,25 +130,25 @@ module tb_commerce_area;
         rst_n = 1'b1;
         @(posedge clk);
 
-        check(!tax_valid, "reset 後不應立即輸出稅收");
+        check(!tax_valid, "tax_valid should be low after reset");
         check(material_ready && power_ready && labor_ready,
-               "reset 後三個輸入 ready 應為高");
+               "all input ready signals should be high after reset");
 
         // 只送物資與電力，缺少勞動力時應等待，不可提前產生稅收。
         send_material(16'd2);
         send_power(16'd2);
         repeat (2) @(posedge clk);
-        check(!tax_valid, "缺少勞動力時不應產生稅收");
-        check(state == `S_WAIT, "缺少必要資源時應進入 S_WAIT");
+        check(!tax_valid, "tax should not be produced without labor");
+        check(state == `S_WAIT, "state should enter S_WAIT when required resources are missing");
 
         // 補上勞動力後，三種資源剛好完成一次商業區轉換。
         send_labor(16'd2);
         wait_for_tax_valid();
-        check(debug_funds == 16'd10, "稅收尚未被接收前，debug_funds 應為 10");
+        check(debug_funds == 16'd10, "debug_funds should be 10 before tax is accepted");
         @(posedge clk);
-        check(!tax_valid, "tax_ready 為高時，稅收應在握手後清除");
+        check(!tax_valid, "tax_valid should clear after handshake when tax_ready is high");
 
-        // 測試下游 back-pressure：tax_ready 拉低時，稅收輸出必須保持。
+        // 測試下游反壓：稅收接收端不可接收時，稅收輸出必須保持。
         tax_ready = 1'b0;
         send_material(16'd2);
         send_power(16'd2);
@@ -156,20 +156,20 @@ module tb_commerce_area;
         wait_for_tax_valid();
         repeat (3) begin
             @(posedge clk);
-            check(tax_valid, "tax_ready 為低時，tax_valid 必須保持");
-            check(tax_data == 16'd10, "tax_ready 為低時，tax_data 必須保持 10");
+            check(tax_valid, "tax_valid should hold while tax_ready is low");
+            check(tax_data == 16'd10, "tax_data should hold 10 while tax_ready is low");
         end
         tax_ready = 1'b1;
         @(posedge clk);
         @(posedge clk);
-        check(!tax_valid, "tax_ready 恢復後，稅收應完成握手並清除");
+        check(!tax_valid, "tax_valid should clear after tax_ready returns high");
 
         // 大量物資入庫後，物資 ready 應依滿載規則拉低。
         send_material(16'd65000);
         @(posedge clk);
-        check(!material_ready, "物資庫存達 65000 後 material_ready 應拉低");
+        check(!material_ready, "material_ready should go low after material storage reaches 65000");
 
-        $display("通過：commerce_area 單元測試完成。");
+        $display("PASS: commerce_area unit test completed.");
         $finish;
     end
 

@@ -125,7 +125,7 @@ vvp cyber_city_tb.vvp
 預期最後會看到：
 
 ```text
-通過：Cyber City 在所有模式下都存活 1000 個 clock。
+PASS: Cyber City completed 1000 clock cycles in all modes.
 ```
 
 ## 執行商業區單元測試
@@ -138,5 +138,5 @@ vvp commerce_area_tb.vvp
 預期最後會看到：
 
 ```text
-通過：commerce_area 單元測試完成。
+PASS: commerce_area unit test completed.
 ```
