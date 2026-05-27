@@ -140,3 +140,16 @@ vvp commerce_area_tb.vvp
 ```text
 PASS: commerce_area unit test completed.
 ```
+
+## src2 commercial_zone tb2
+
+```powershell
+iverilog -g2012 -o commercial_zone_tb2.vvp src2/commercial_zone.v tb2/tb_commercial_zone.v
+vvp commercial_zone_tb2.vvp
+```
+
+Expected final line:
+
+```text
+PASS: commercial_zone tb2 completed.
+```
