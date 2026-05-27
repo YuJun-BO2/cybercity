@@ -1,0 +1,106 @@
+`include "city_define.vh"
+
+module Commercial_District (
+    input  wire clk,
+    input  wire rst_n,
+    
+    // --- 來自重工業區 (物資) ---
+    input  wire in_mat_valid,
+    input  wire [`DATA_WIDTH-1:0] in_mat_data,
+    output reg  in_mat_ready,
+    
+    // --- 來自發電廠 (電力) ---
+    input  wire in_pwr_valid,
+    input  wire [`DATA_WIDTH-1:0] in_pwr_data,
+    output reg  in_pwr_ready,
+    
+    // --- 來自住宅區 (勞動力) ---
+    input  wire in_lbr_valid,
+    input  wire [`DATA_WIDTH-1:0] in_lbr_data,
+    output reg  in_lbr_ready,
+    
+    // --- 輸出至市政府 (資金) ---
+    output reg  out_fund_valid,
+    output reg  [`DATA_WIDTH-1:0] out_fund_data,
+    input  wire out_fund_ready
+);
+
+    // 內部資源暫存器
+    reg [`DATA_WIDTH-1:0] internal_mat, internal_pwr, internal_lbr, internal_fund;
+    reg [2:0] state, next_state;
+
+    // ==========================================
+    // 區塊 1: 狀態機 (FSM) - 下一個狀態邏輯
+    // ==========================================
+    always @(*) begin
+        case(state)
+            `S_IDLE: next_state = `S_WAIT;
+            `S_WAIT: begin
+                if (internal_mat >= 2 && internal_pwr >= 2 && internal_lbr >= 2)
+                    next_state = `S_WORK;
+                else
+                    next_state = `S_WAIT;
+            end
+            `S_WORK: begin
+                // 破產保護預判：若生產會歸零以下 (這裡加入保險)
+                if (internal_mat < 2 || internal_pwr < 2 || internal_lbr < 2)
+                    next_state = `S_CRISIS; 
+                else
+                    next_state = `S_WORK;
+            end
+            `S_CRISIS: next_state = `S_WAIT; // 危機處理後回歸等待
+            default: next_state = `S_IDLE;
+        endcase
+    end
+
+    // ==========================================
+    // 區塊 2: 資源結算與 Ready/Valid 輸出 (Sequential)
+    // ==========================================
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state <= `S_IDLE;
+            internal_mat <= 16'd0; // 商業區開局皆為 0
+            internal_pwr <= 16'd0;
+            internal_lbr <= 16'd0;
+            internal_fund <= 16'd0;
+            
+            in_mat_ready <= 1'b0;
+            in_pwr_ready <= 1'b0;
+            in_lbr_ready <= 1'b0;
+            out_fund_valid <= 1'b0;
+        end else begin
+            state <= next_state;
+            
+            // 1. 更新 Ready 訊號 (Register 輸出，非 assign)
+            in_mat_ready <= (internal_mat < 16'd65000) ? 1'b1 : 1'b0;
+            in_pwr_ready <= (internal_pwr < 16'd65000) ? 1'b1 : 1'b0;
+            in_lbr_ready <= (internal_lbr < 16'd65000) ? 1'b1 : 1'b0;
+
+            // 2. 資源動態結算：現在數量 + 收貨量 - 生產消耗量
+            internal_mat <= internal_mat 
+                            + ((in_mat_valid && in_mat_ready) ? in_mat_data : 0) 
+                            - ((state == `S_WORK) ? 2 : 0);
+                            
+            internal_pwr <= internal_pwr 
+                            + ((in_pwr_valid && in_pwr_ready) ? in_pwr_data : 0) 
+                            - ((state == `S_WORK) ? 2 : 0);
+                            
+            internal_lbr <= internal_lbr 
+                            + ((in_lbr_valid && in_lbr_ready) ? in_lbr_data : 0) 
+                            - ((state == `S_WORK) ? 2 : 0);
+            
+            // 3. 資金產出邏輯與發送
+            // 當在工作狀態，產生 10 資金
+            if (state == `S_WORK) begin
+                internal_fund <= internal_fund + 10;
+                out_fund_valid <= 1'b1; // 發出有效訊號
+                out_fund_data  <= 10;   // 將剛產出的 10 資金送出
+            end else begin
+                // 若下游 (市政府) 成功收走，則清除 Valid
+                if (out_fund_valid && out_fund_ready) begin
+                    out_fund_valid <= 1'b0;
+                end
+            end
+        end
+    end
+endmodule
