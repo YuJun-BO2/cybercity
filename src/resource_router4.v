@@ -1,7 +1,7 @@
 `include "city_define.vh"
 
-// One-input, four-output registered router. It holds one outgoing transfer at
-// a time and rotates through enabled targets to avoid starving a consumer.
+// 單輸入、四輸出的註冊式路由器。每次保留一筆待送資源，
+// 並在啟用的輸出端之間 round-robin 輪流分配，避免任一下游長期拿不到資源。
 module resource_router4 #(
     parameter ENABLE0 = 1'b1,
     parameter ENABLE1 = 1'b1,
@@ -45,8 +45,7 @@ module resource_router4 #(
     assign fire2 = out2_valid && out2_ready;
     assign fire3 = out3_valid && out3_ready;
 
-    // Pick the current round-robin target, falling back to the first enabled
-    // port if the pointer lands on a disabled output.
+    // 選擇目前 round-robin 目標；若指標落在停用輸出，則退回第一個啟用輸出。
     function [1:0] pick_target;
         input [1:0] start;
         begin
@@ -88,8 +87,7 @@ module resource_router4 #(
             if (fire2) out2_valid <= 1'b0;
             if (fire3) out3_valid <= 1'b0;
 
-            // The router latches data and valid together, so downstream
-            // modules receive a stable packet until they assert ready.
+            // data 與 valid 同步鎖住，直到下游 ready 後才釋放，確保封包穩定。
             if (in_valid && in_ready) begin
                 case (pick_target(rr_ptr))
                     2'd0: begin
@@ -115,8 +113,7 @@ module resource_router4 #(
                 endcase
             end
 
-            // New input is accepted once no output is pending, or when an
-            // output handshake frees space in this cycle.
+            // 沒有待送輸出，或本 cycle 有輸出完成握手時，才接受新的輸入。
             in_ready <= !busy || fire0 || fire1 || fire2 || fire3;
         end
     end

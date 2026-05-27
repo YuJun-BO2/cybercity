@@ -1,8 +1,7 @@
 `include "city_define.vh"
 
-// Generic production block used by power, water, residential, industry,
-// and commerce. Inputs are accepted only on valid && ready; production
-// happens only when all configured costs are already available.
+// 通用生產部門，供發電廠、淨水廠、住宅區、重工業區與商業區共用。
+// 輸入資源只在 valid && ready 成立時入庫；只有所有成本資源都足夠時才會生產。
 module department #(
     parameter COST0 = 16'd0,
     parameter COST1 = 16'd0,
@@ -58,8 +57,7 @@ module department #(
     wire missing_resource;
     wire product_room;
 
-    // Ready is driven from registered inventory so upstream modules see a
-    // stable, clocked back-pressure decision.
+    // ready 由暫存後的庫存決定，讓上游看到穩定且同步的 back-pressure。
     assign can_accept0 = (store0 < `READY_LIMIT);
     assign can_accept1 = (store1 < `READY_LIMIT);
     assign can_accept2 = (store2 < `READY_LIMIT);
@@ -84,7 +82,7 @@ module department #(
     assign debug_store2 = store2;
     assign debug_product = product_store;
 
-    // Prevent wraparound when several resources arrive in the same cycle.
+    // 多個資源在同一個 cycle 進來時，避免 16-bit 加法回捲。
     function [`DATA_WIDTH-1:0] saturating_add;
         input [`DATA_WIDTH-1:0] lhs;
         input [`DATA_WIDTH-1:0] rhs;
@@ -105,7 +103,7 @@ module department #(
         next_store2 = store2;
         next_product_store = product_store;
 
-        // Incoming resource deposits are counted only after handshake.
+        // 只有完成握手的輸入資源才會被計入庫存。
         if (in0_valid && in0_ready) begin
             next_store0 = saturating_add(next_store0, in0_data);
         end
@@ -116,7 +114,7 @@ module department #(
             next_store2 = saturating_add(next_store2, in2_data);
         end
 
-        // Product leaves the department only after downstream acceptance.
+        // 只有下游接受後，產品才會離開本部門庫存。
         if (output_fire) begin
             if (next_product_store > out_data) begin
                 next_product_store = next_product_store - out_data;
@@ -125,8 +123,8 @@ module department #(
             end
         end
 
-        // The arithmetic guard above keeps this subtraction from going below
-        // zero; if inputs are missing, the state moves to S_WAIT instead.
+        // can_produce 已確認資源足夠，因此這裡扣庫存不會低於 0。
+        // 若資源不足，狀態會轉為 S_WAIT，而不是錯誤扣成負值。
         if (can_produce) begin
             next_store0 = next_store0 - COST0;
             next_store1 = next_store1 - COST1;
@@ -134,8 +132,7 @@ module department #(
             next_product_store = saturating_add(next_product_store, PRODUCT_AMOUNT);
         end
 
-        // S_WAIT marks normal pipeline bubbles; S_IDLE also covers full output
-        // inventory, where the block intentionally stops producing.
+        // S_WAIT 表示正常的資源等待；S_IDLE 也包含產品庫存滿載時暫停生產。
         if (next_product_store >= `READY_LIMIT) begin
             next_state = `S_IDLE;
         end else if (can_produce) begin
@@ -163,8 +160,8 @@ module department #(
             product_store <= next_product_store;
             state <= next_state;
 
-            // Keep output valid registered. A partial final packet is allowed
-            // if the local product store has less than PRODUCT_AMOUNT.
+            // out_valid 維持為暫存器輸出。若剩餘產品不足一個標準封包，
+            // 仍允許送出較小的最後一包。
             if (next_product_store == 16'd0) begin
                 out_data <= 16'd0;
                 out_valid <= 1'b0;

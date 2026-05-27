@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 `include "../src/city_define.vh"
 
-// Runs the same integrated city under the three handout-defined initial
-// conditions and checks that no module reaches S_DEAD during 1000 clocks.
+// 使用題目定義的三組初始條件測試同一個城市整合模組，
+// 並確認 1000 個 clock 內沒有任何部門進入 S_DEAD。
 module tb_cyber_city;
 
     reg clk;
@@ -47,7 +47,7 @@ module tb_cyber_city;
     wire [`DATA_WIDTH-1:0] c_material;
     wire [`DATA_WIDTH-1:0] c_commerce;
 
-    // Beginner Mode: official generous starting inventory.
+    // 新手模式：題目指定的寬鬆初始庫存。
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd10000),
         .INIT_POWER_WATER(16'd500),
@@ -70,7 +70,7 @@ module tb_cyber_city;
         .debug_commerce_funds(b_commerce)
     );
 
-    // Expert Mode: low funds and water, no initial labor or materials.
+    // 專家模式：低資金與低水量，勞動力與物資皆為 0。
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd100),
         .INIT_POWER_WATER(16'd20),
@@ -93,7 +93,7 @@ module tb_cyber_city;
         .debug_commerce_funds(e_commerce)
     );
 
-    // 6-2 Challenge: minimum viable startup case.
+    // 6-2 挑戰：最低可啟動資源。
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd6),
         .INIT_POWER_WATER(16'd2),
@@ -116,14 +116,13 @@ module tb_cyber_city;
         .debug_commerce_funds(c_commerce)
     );
 
-    // Shared test clock.
+    // 共用測試時脈。
     initial begin
         clk = 1'b0;
         forever #(`CLK_PERIOD / 2) clk = ~clk;
     end
 
-    // The RTL currently uses S_WAIT for resource starvation. Reaching S_DEAD
-    // would indicate an unrecoverable state transition bug.
+    // RTL 以 S_WAIT 表示正常資源等待；若進入 S_DEAD，代表出現不可恢復的狀態錯誤。
     task fail_if_dead;
         input [2:0] power_state;
         input [2:0] water_state;
@@ -138,14 +137,14 @@ module tb_cyber_city;
                 (industry_state == `S_DEAD) ||
                 (commerce_state == `S_DEAD) ||
                 (government_state == `S_DEAD)) begin
-                $display("ERROR: a module entered S_DEAD at time %0t", $time);
+                $display("錯誤：有模組在時間 %0t 進入 S_DEAD", $time);
                 $finish;
             end
         end
     endtask
 
     task print_city;
-        input [8*16-1:0] label_text;
+        input [1:0] mode_id;
         input [`DATA_WIDTH-1:0] funds;
         input [`DATA_WIDTH-1:0] power;
         input [`DATA_WIDTH-1:0] water;
@@ -153,22 +152,26 @@ module tb_cyber_city;
         input [`DATA_WIDTH-1:0] material;
         input [`DATA_WIDTH-1:0] commerce;
         begin
-            $display("%0s funds=%0d power=%0d water=%0d labor=%0d material=%0d commerce=%0d",
-                     label_text, funds, power, water, labor, material, commerce);
+            case (mode_id)
+                2'd0: $display("新手模式 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                                funds, power, water, labor, material, commerce);
+                2'd1: $display("專家模式 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                                funds, power, water, labor, material, commerce);
+                default: $display("6-2挑戰 資金=%0d 電力=%0d 水=%0d 勞動力=%0d 物資=%0d 商業資金=%0d",
+                                  funds, power, water, labor, material, commerce);
+            endcase
         end
     endtask
 
     integer cycle;
 
     initial begin
-        // Hold reset for a few edges so all three city instances start from
-        // stable registered values.
+        // reset 維持數個時脈，讓三個城市實例都從穩定的註冊值開始。
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         rst_n = 1'b1;
 
-        // The handout's beginner acceptance target is 1000 clocks; the tighter
-        // modes run through the same duration for comparison.
+        // 題目新手模式的驗收目標是 1000 個 clock；較困難模式也跑相同長度以便比較。
         for (cycle = 0; cycle < 1000; cycle = cycle + 1) begin
             @(posedge clk);
             fail_if_dead(b_state_power, b_state_water, b_state_residential,
@@ -179,13 +182,13 @@ module tb_cyber_city;
                          c_state_industry, c_state_commerce, c_state_government);
         end
 
-        print_city("BEGINNER", b_funds, b_power, b_water, b_labor,
+        print_city(2'd0, b_funds, b_power, b_water, b_labor,
                    b_material, b_commerce);
-        print_city("EXPERT", e_funds, e_power, e_water, e_labor,
+        print_city(2'd1, e_funds, e_power, e_water, e_labor,
                    e_material, e_commerce);
-        print_city("CHALLENGE", c_funds, c_power, c_water, c_labor,
+        print_city(2'd2, c_funds, c_power, c_water, c_labor,
                    c_material, c_commerce);
-        $display("PASS: Cyber City survived 1000 clocks in all modes.");
+        $display("通過：Cyber City 在所有模式下都存活 1000 個 clock。");
         $finish;
     end
 

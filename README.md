@@ -1,17 +1,17 @@
 # Cyber City
 
-Verilog implementation of the Cyber City closed-loop resource system.
+Cyber City 是一個以 Verilog 實作的閉環資源經濟系統。專案模擬一座城市中六個部門之間的資源轉換與握手傳輸，所有資源交換都透過 `valid && ready` 在時脈邊緣完成。
 
-## Table of Contents
+## 目錄
 
-- [Project Directory](#project-directory)
-- [System Architecture](#system-architecture)
-- [Resource Flow](#resource-flow)
-- [Module Responsibilities](#module-responsibilities)
-- [Structure](#structure)
-- [Run Simulation](#run-simulation)
+- [專案目錄](#專案目錄)
+- [系統架構](#系統架構)
+- [資源流向](#資源流向)
+- [模組職責](#模組職責)
+- [檔案說明](#檔案說明)
+- [執行模擬](#執行模擬)
 
-## Project Directory
+## 專案目錄
 
 ```text
 cybercity/
@@ -29,91 +29,85 @@ cybercity/
     `-- tb_cyber_city.v
 ```
 
-## System Architecture
+## 系統架構
 
-Cyber City is a closed-loop resource economy. Each department is modeled as a
-registered valid/ready producer-consumer block. A transfer is accepted only
-when `valid && ready` are both high on a clock edge.
+Cyber City 採用閉環經濟架構。每個部門都是暫存器化的生產者/消費者模組，上游只有在 `valid` 與 `ready` 同時為高時，才會把資源送入下游。這樣可以避免純組合邏輯串接造成握手迴圈，也能在資源滿載時自然形成 back-pressure。
 
 ```text
-                    tax
+                    稅收
         +--------------------------+
         |                          v
 +----------------+       +----------------+
-|   Commerce     |       |  Government    |
-| funds producer |       | fund arbiter   |
+|    商業區      |       |   中央政府     |
+|  產生資金      |       |  資金仲裁器    |
 +----------------+       +----------------+
       ^   ^   ^             |        |
       |   |   |             |        |
       |   |   |             v        v
       |   |   |        +--------+ +--------+
-      |   |   +--------| Power  | | Water  |
-      |   | electricity+--------+ +--------+
+      |   |   +--------| 發電廠 | | 淨水廠 |
+      |   |      電力  +--------+ +--------+
       |   |                 |        |
       |   |                 v        v
-      |   |             resource routers
+      |   |              資源路由器
       |   |                 |        |
       |   +-----------------+        |
-      | labor                       water
+      | 勞動力                       水
       |                              |
-+-------------+      labor     +-------------+
-| Residential |--------------->|  Industry   |
-| labor maker |                | material    |
-+-------------+                +-------------+
++-------------+    勞動力     +-------------+
+|   住宅區    |-------------->|  重工業區   |
+|  產生勞動力 |               |  產生物資   |
++-------------+               +-------------+
                                       |
                                       v
-                                  Commerce
+                                    商業區
 ```
 
-## Resource Flow
+## 資源流向
 
-The integrated top module wires the six logical departments into the handout's
-economy:
+整合後的 `cyber_city_top` 將六個邏輯部門接成題目要求的經濟循環：
 
-1. Government sends funds to the power plant and water plant.
-2. Power plant consumes funds and water, then produces electricity.
-3. Water plant consumes funds and electricity, then produces water.
-4. Residential area consumes water and electricity, then produces labor.
-5. Industry consumes electricity and labor, then produces materials.
-6. Commerce consumes materials, electricity, and labor, then produces tax
-   income back to the government.
+1. 中央政府分配資金給發電廠與淨水廠。
+2. 發電廠消耗資金與水，產生電力。
+3. 淨水廠消耗資金與電力，產生水。
+4. 住宅區消耗水與電力，產生勞動力。
+5. 重工業區消耗電力與勞動力，產生工業物資。
+6. 商業區消耗工業物資、電力與勞動力，產生稅收並回流中央政府。
 
-Routers distribute shared resources through registered round-robin arbitration:
+共享資源由暫存器化 round-robin 路由器分配：
 
-- Electricity goes to water, residential, industry, and commerce.
-- Water goes to power and residential.
-- Labor goes to industry and commerce.
-- Materials go to commerce.
+- 電力分配給淨水廠、住宅區、重工業區、商業區。
+- 水分配給發電廠、住宅區。
+- 勞動力分配給重工業區、商業區。
+- 工業物資分配給商業區。
 
-## Module Responsibilities
+## 模組職責
 
-- `cyber_city_top`: top-level integration of all departments and routers.
-- `government`: stores city funds and issues registered grants.
-- `department`: reusable production engine for all non-government departments.
-- `resource_router4`: one-input, four-output round-robin valid/ready router.
-- `city_define.vh`: shared constants, resource width, reset values, and FSM
-  state definitions.
-- `tb_cyber_city`: runs Beginner, Expert, and 6-2 Challenge modes for 1000
-  clocks and fails if any module enters `S_DEAD`.
+- `cyber_city_top`：整合所有部門與資源路由器，是整座城市的 Top Module。
+- `government`：保存城市資金，接收商業區稅收，並以註冊握手介面分配資金。
+- `department`：通用生產部門，供發電廠、淨水廠、住宅區、重工業區與商業區共用。
+- `resource_router4`：單一輸入、四個輸出的 round-robin `valid/ready` 路由器。
+- `city_define.vh`：集中定義資料寬度、初始資源、FSM 狀態與資源上限。
+- `tb_cyber_city`：同時測試新手模式、專家模式與 6-2 挑戰模式，連續模擬 1000 個 clock，若任一模組進入 `S_DEAD` 則測試失敗。
 
-## Structure
+## 檔案說明
 
-- `src/city_define.vh`: shared constants and FSM states
-- `src/department.v`: reusable production department with valid/ready handshakes
-- `src/government.v`: central government fund arbiter
-- `src/resource_router4.v`: round-robin resource router
-- `src/cyber_city_top.v`: integrated city top module
-- `tb/tb_cyber_city.v`: simulation testbench for Beginner, Expert, and 6-2 Challenge modes
+- `src/city_define.vh`：共用常數與 FSM 狀態定義。
+- `src/department.v`：具備 `valid/ready` 握手機制的通用生產部門。
+- `src/government.v`：中央政府資金仲裁器。
+- `src/resource_router4.v`：round-robin 資源路由器。
+- `src/cyber_city_top.v`：城市整合層。
+- `tb/tb_cyber_city.v`：三種驗收模式的模擬測試平台。
 
-## Run Simulation
+## 執行模擬
 
 ```powershell
 iverilog -g2012 -I src -o cyber_city_tb.vvp src/department.v src/government.v src/resource_router4.v src/cyber_city_top.v tb/tb_cyber_city.v
 vvp cyber_city_tb.vvp
 ```
 
-Expected final line:
+預期最後會看到：
 
 ```text
-PASS: Cyber City survived 1000 clocks in all modes.
+通過：Cyber City 在所有模式下都存活 1000 個 clock。
 ```

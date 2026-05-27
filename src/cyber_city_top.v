@@ -1,14 +1,14 @@
 `include "city_define.vh"
 
-// Integrated Cyber City closed-loop economy.
+// Cyber City 閉環經濟系統整合層。
 //
-// Resource flow:
-//   government funds -> power/water
-//   power -> water/residential/industry/commerce
-//   water -> power/residential
-//   residential labor -> industry/commerce
-//   industry material -> commerce
-//   commerce tax -> government
+// 資源流向：
+//   中央政府資金 -> 發電廠 / 淨水廠
+//   電力 -> 淨水廠 / 住宅區 / 重工業區 / 商業區
+//   水 -> 發電廠 / 住宅區
+//   住宅區勞動力 -> 重工業區 / 商業區
+//   重工業區物資 -> 商業區
+//   商業區稅收 -> 中央政府
 module cyber_city_top #(
     parameter INIT_GOV_FUNDS = `INIT_FUNDS,
     parameter INIT_POWER_WATER = `INIT_WATER,
@@ -101,14 +101,12 @@ module cyber_city_top #(
     wire [`DATA_WIDTH-1:0] unused_store2;
     wire [`DATA_WIDTH-1:0] unused_product;
 
-    // Disabled government grant channels are always ready so an accidental
-    // valid pulse cannot block the arbiter.
+    // 停用的政府資金通道固定 ready，避免意外 valid 脈波卡住仲裁器。
     assign unused_fund2_ready = 1'b1;
     assign unused_fund3_ready = 1'b1;
     assign unused_fund4_ready = 1'b1;
 
-    // Government keeps the economy moving by funding the two departments that
-    // require money directly: power generation and water treatment.
+    // 中央政府負責供應直接消耗資金的兩個部門：發電廠與淨水廠。
     government #(
         .INIT_FUNDS(INIT_GOV_FUNDS),
         .GRANT0(16'd2),
@@ -141,7 +139,7 @@ module cyber_city_top #(
         .debug_funds(debug_funds)
     );
 
-    // Power plant: consumes funds and water, produces electricity.
+    // 發電廠：消耗資金與水，產生電力。
     department #(
         .COST0(16'd2),
         .COST1(16'd1),
@@ -169,7 +167,7 @@ module cyber_city_top #(
         .debug_product(debug_power_energy)
     );
 
-    // Water plant: consumes funds and electricity, produces water.
+    // 淨水廠：消耗資金與電力，產生水。
     department #(
         .COST0(16'd2),
         .COST1(16'd2),
@@ -196,7 +194,7 @@ module cyber_city_top #(
         .debug_product(debug_water_resource)
     );
 
-    // Residential area: consumes water and electricity, produces labor.
+    // 住宅區：消耗水與電力，產生勞動力。
     department #(
         .COST0(16'd1),
         .COST1(16'd1),
@@ -224,7 +222,7 @@ module cyber_city_top #(
         .debug_product(debug_labor_resource)
     );
 
-    // Heavy industry: consumes electricity and labor, produces materials.
+    // 重工業區：消耗電力與勞動力，產生工業物資。
     department #(
         .COST0(16'd3),
         .COST1(16'd1),
@@ -252,8 +250,7 @@ module cyber_city_top #(
         .debug_product(debug_material_resource)
     );
 
-    // Commerce: consumes materials, electricity, and labor, then returns tax
-    // income to the government.
+    // 商業區：消耗物資、電力與勞動力，並將稅收回流中央政府。
     department #(
         .COST0(16'd2),
         .COST1(16'd2),
@@ -281,7 +278,7 @@ module cyber_city_top #(
         .debug_product(debug_commerce_funds)
     );
 
-    // Electricity has four downstream consumers.
+    // 電力有四個下游消費者。
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -307,7 +304,7 @@ module cyber_city_top #(
         .out3_ready(power_to_com_ready)
     );
 
-    // Water is needed by power generation and residential production.
+    // 水供應給發電廠與住宅區。
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -333,7 +330,7 @@ module cyber_city_top #(
         .out3_ready(1'b1)
     );
 
-    // Labor feeds industry and commerce.
+    // 勞動力供應給重工業區與商業區。
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -359,7 +356,7 @@ module cyber_city_top #(
         .out3_ready(1'b1)
     );
 
-    // Materials only feed commerce in the project formula.
+    // 題目公式中，工業物資只供應給商業區。
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b0),
