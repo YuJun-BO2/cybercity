@@ -1,5 +1,8 @@
 `include "city_define.vh"
 
+// Generic production block used by power, water, residential, industry,
+// and commerce. Inputs are accepted only on valid && ready; production
+// happens only when all configured costs are already available.
 module department #(
     parameter COST0 = 16'd0,
     parameter COST1 = 16'd0,
@@ -55,6 +58,8 @@ module department #(
     wire missing_resource;
     wire product_room;
 
+    // Ready is driven from registered inventory so upstream modules see a
+    // stable, clocked back-pressure decision.
     assign can_accept0 = (store0 < `READY_LIMIT);
     assign can_accept1 = (store1 < `READY_LIMIT);
     assign can_accept2 = (store2 < `READY_LIMIT);
@@ -79,6 +84,7 @@ module department #(
     assign debug_store2 = store2;
     assign debug_product = product_store;
 
+    // Prevent wraparound when several resources arrive in the same cycle.
     function [`DATA_WIDTH-1:0] saturating_add;
         input [`DATA_WIDTH-1:0] lhs;
         input [`DATA_WIDTH-1:0] rhs;
@@ -99,6 +105,7 @@ module department #(
         next_store2 = store2;
         next_product_store = product_store;
 
+        // Incoming resource deposits are counted only after handshake.
         if (in0_valid && in0_ready) begin
             next_store0 = saturating_add(next_store0, in0_data);
         end
@@ -109,6 +116,7 @@ module department #(
             next_store2 = saturating_add(next_store2, in2_data);
         end
 
+        // Product leaves the department only after downstream acceptance.
         if (output_fire) begin
             if (next_product_store > out_data) begin
                 next_product_store = next_product_store - out_data;
@@ -117,6 +125,8 @@ module department #(
             end
         end
 
+        // The arithmetic guard above keeps this subtraction from going below
+        // zero; if inputs are missing, the state moves to S_WAIT instead.
         if (can_produce) begin
             next_store0 = next_store0 - COST0;
             next_store1 = next_store1 - COST1;
@@ -124,6 +134,8 @@ module department #(
             next_product_store = saturating_add(next_product_store, PRODUCT_AMOUNT);
         end
 
+        // S_WAIT marks normal pipeline bubbles; S_IDLE also covers full output
+        // inventory, where the block intentionally stops producing.
         if (next_product_store >= `READY_LIMIT) begin
             next_state = `S_IDLE;
         end else if (can_produce) begin
@@ -151,6 +163,8 @@ module department #(
             product_store <= next_product_store;
             state <= next_state;
 
+            // Keep output valid registered. A partial final packet is allowed
+            // if the local product store has less than PRODUCT_AMOUNT.
             if (next_product_store == 16'd0) begin
                 out_data <= 16'd0;
                 out_valid <= 1'b0;

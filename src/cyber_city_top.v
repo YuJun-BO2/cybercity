@@ -1,5 +1,14 @@
 `include "city_define.vh"
 
+// Integrated Cyber City closed-loop economy.
+//
+// Resource flow:
+//   government funds -> power/water
+//   power -> water/residential/industry/commerce
+//   water -> power/residential
+//   residential labor -> industry/commerce
+//   industry material -> commerce
+//   commerce tax -> government
 module cyber_city_top #(
     parameter INIT_GOV_FUNDS = `INIT_FUNDS,
     parameter INIT_POWER_WATER = `INIT_WATER,
@@ -92,10 +101,14 @@ module cyber_city_top #(
     wire [`DATA_WIDTH-1:0] unused_store2;
     wire [`DATA_WIDTH-1:0] unused_product;
 
+    // Disabled government grant channels are always ready so an accidental
+    // valid pulse cannot block the arbiter.
     assign unused_fund2_ready = 1'b1;
     assign unused_fund3_ready = 1'b1;
     assign unused_fund4_ready = 1'b1;
 
+    // Government keeps the economy moving by funding the two departments that
+    // require money directly: power generation and water treatment.
     government #(
         .INIT_FUNDS(INIT_GOV_FUNDS),
         .GRANT0(16'd2),
@@ -128,6 +141,7 @@ module cyber_city_top #(
         .debug_funds(debug_funds)
     );
 
+    // Power plant: consumes funds and water, produces electricity.
     department #(
         .COST0(16'd2),
         .COST1(16'd1),
@@ -155,6 +169,7 @@ module cyber_city_top #(
         .debug_product(debug_power_energy)
     );
 
+    // Water plant: consumes funds and electricity, produces water.
     department #(
         .COST0(16'd2),
         .COST1(16'd2),
@@ -181,6 +196,7 @@ module cyber_city_top #(
         .debug_product(debug_water_resource)
     );
 
+    // Residential area: consumes water and electricity, produces labor.
     department #(
         .COST0(16'd1),
         .COST1(16'd1),
@@ -208,6 +224,7 @@ module cyber_city_top #(
         .debug_product(debug_labor_resource)
     );
 
+    // Heavy industry: consumes electricity and labor, produces materials.
     department #(
         .COST0(16'd3),
         .COST1(16'd1),
@@ -235,6 +252,8 @@ module cyber_city_top #(
         .debug_product(debug_material_resource)
     );
 
+    // Commerce: consumes materials, electricity, and labor, then returns tax
+    // income to the government.
     department #(
         .COST0(16'd2),
         .COST1(16'd2),
@@ -262,6 +281,7 @@ module cyber_city_top #(
         .debug_product(debug_commerce_funds)
     );
 
+    // Electricity has four downstream consumers.
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -287,6 +307,7 @@ module cyber_city_top #(
         .out3_ready(power_to_com_ready)
     );
 
+    // Water is needed by power generation and residential production.
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -312,6 +333,7 @@ module cyber_city_top #(
         .out3_ready(1'b1)
     );
 
+    // Labor feeds industry and commerce.
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b1),
@@ -337,6 +359,7 @@ module cyber_city_top #(
         .out3_ready(1'b1)
     );
 
+    // Materials only feed commerce in the project formula.
     resource_router4 #(
         .ENABLE0(1'b1),
         .ENABLE1(1'b0),

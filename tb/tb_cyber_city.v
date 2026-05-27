@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 `include "../src/city_define.vh"
 
+// Runs the same integrated city under the three handout-defined initial
+// conditions and checks that no module reaches S_DEAD during 1000 clocks.
 module tb_cyber_city;
 
     reg clk;
@@ -45,6 +47,7 @@ module tb_cyber_city;
     wire [`DATA_WIDTH-1:0] c_material;
     wire [`DATA_WIDTH-1:0] c_commerce;
 
+    // Beginner Mode: official generous starting inventory.
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd10000),
         .INIT_POWER_WATER(16'd500),
@@ -67,6 +70,7 @@ module tb_cyber_city;
         .debug_commerce_funds(b_commerce)
     );
 
+    // Expert Mode: low funds and water, no initial labor or materials.
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd100),
         .INIT_POWER_WATER(16'd20),
@@ -89,6 +93,7 @@ module tb_cyber_city;
         .debug_commerce_funds(e_commerce)
     );
 
+    // 6-2 Challenge: minimum viable startup case.
     cyber_city_top #(
         .INIT_GOV_FUNDS(16'd6),
         .INIT_POWER_WATER(16'd2),
@@ -111,11 +116,14 @@ module tb_cyber_city;
         .debug_commerce_funds(c_commerce)
     );
 
+    // Shared test clock.
     initial begin
         clk = 1'b0;
         forever #(`CLK_PERIOD / 2) clk = ~clk;
     end
 
+    // The RTL currently uses S_WAIT for resource starvation. Reaching S_DEAD
+    // would indicate an unrecoverable state transition bug.
     task fail_if_dead;
         input [2:0] power_state;
         input [2:0] water_state;
@@ -153,10 +161,14 @@ module tb_cyber_city;
     integer cycle;
 
     initial begin
+        // Hold reset for a few edges so all three city instances start from
+        // stable registered values.
         rst_n = 1'b0;
         repeat (3) @(posedge clk);
         rst_n = 1'b1;
 
+        // The handout's beginner acceptance target is 1000 clocks; the tighter
+        // modes run through the same duration for comparison.
         for (cycle = 0; cycle < 1000; cycle = cycle + 1) begin
             @(posedge clk);
             fail_if_dead(b_state_power, b_state_water, b_state_residential,

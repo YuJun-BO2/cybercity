@@ -1,5 +1,7 @@
 `include "city_define.vh"
 
+// Central fund bank. It accepts tax income from commerce and issues registered
+// grants to departments through valid/ready channels.
 module government #(
     parameter INIT_FUNDS = `INIT_FUNDS,
     parameter GRANT0 = 16'd2,
@@ -52,6 +54,7 @@ module government #(
     wire fire4;
     wire has_pending_grant;
 
+    // Tax collection follows the same storage limit rule as other resources.
     assign tax_ready = (funds < `READY_LIMIT);
     assign fire_tax = tax_valid && tax_ready;
     assign fire0 = fund0_valid && fund0_ready;
@@ -63,6 +66,7 @@ module government #(
                                fund3_valid || fund4_valid;
     assign debug_funds = funds;
 
+    // Tax income saturates instead of wrapping the 16-bit fund counter.
     function [`DATA_WIDTH-1:0] saturating_add;
         input [`DATA_WIDTH-1:0] lhs;
         input [`DATA_WIDTH-1:0] rhs;
@@ -81,6 +85,8 @@ module government #(
         next_funds = funds;
         next_rr_ptr = rr_ptr;
 
+        // Apply all handshakes to the next fund value in one combinational
+        // pass, then register the result on the clock edge.
         if (fire_tax) begin
             next_funds = saturating_add(next_funds, tax_data);
         end
@@ -132,6 +138,8 @@ module government #(
             if (fire4) fund4_valid <= 1'b0;
 
             if (!has_pending_grant) begin
+                // The first two grant channels feed the only departments that
+                // consume funds in this design: power and water.
                 if ((rr_ptr == 3'd0) && (next_funds >= GRANT0) &&
                     (GRANT0 != 16'd0)) begin
                     fund0_data <= GRANT0;

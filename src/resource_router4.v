@@ -1,5 +1,7 @@
 `include "city_define.vh"
 
+// One-input, four-output registered router. It holds one outgoing transfer at
+// a time and rotates through enabled targets to avoid starving a consumer.
 module resource_router4 #(
     parameter ENABLE0 = 1'b1,
     parameter ENABLE1 = 1'b1,
@@ -43,6 +45,8 @@ module resource_router4 #(
     assign fire2 = out2_valid && out2_ready;
     assign fire3 = out3_valid && out3_ready;
 
+    // Pick the current round-robin target, falling back to the first enabled
+    // port if the pointer lands on a disabled output.
     function [1:0] pick_target;
         input [1:0] start;
         begin
@@ -84,6 +88,8 @@ module resource_router4 #(
             if (fire2) out2_valid <= 1'b0;
             if (fire3) out3_valid <= 1'b0;
 
+            // The router latches data and valid together, so downstream
+            // modules receive a stable packet until they assert ready.
             if (in_valid && in_ready) begin
                 case (pick_target(rr_ptr))
                     2'd0: begin
@@ -109,6 +115,8 @@ module resource_router4 #(
                 endcase
             end
 
+            // New input is accepted once no output is pending, or when an
+            // output handshake frees space in this cycle.
             in_ready <= !busy || fire0 || fire1 || fire2 || fire3;
         end
     end
