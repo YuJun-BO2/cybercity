@@ -1,0 +1,15 @@
+// 模板：如何安全地把上游資源收進倉庫
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        internal_water <= 16'd0;
+    end else begin
+        // 核心天條：只有在 Valid 和 Ready 同時為 High 的那個瞬間，才算收貨成功！
+        if (in_water_valid && in_water_ready) begin
+            internal_water <= internal_water + in_water_data;
+        end
+        // FSM 消耗邏輯寫在其他地方...
+    end
+end
+
+// Ready 腳位絕對不能延遲，通常用 assign 判斷倉庫有沒有滿
+assign in_water_ready = (internal_water < 16'd65000) ? 1'b1 : 1'b0;
