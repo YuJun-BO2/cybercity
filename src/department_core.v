@@ -1,8 +1,8 @@
 `include "city_define.vh"
 
-// 通用生產部門，供發電廠、淨水廠、住宅區、重工業區與商業區共用。
-// 輸入資源只在 valid && ready 成立時入庫；只有所有成本資源都足夠時才會生產。
-module department #(
+// 部門共用核心。各實際部門只負責定義成本、產出與初始庫存，
+// 握手入庫、資源扣除、產出暫存與防溢位邏輯都集中在這裡。
+module department_core #(
     parameter COST0 = 16'd0,
     parameter COST1 = 16'd0,
     parameter COST2 = 16'd0,

@@ -21,7 +21,12 @@ cybercity/
 |-- Hint.txt
 |-- src/
 |   |-- city_define.vh
-|   |-- department.v
+|   |-- department_core.v
+|   |-- power_plant.v
+|   |-- water_plant.v
+|   |-- residential_area.v
+|   |-- industry_area.v
+|   |-- commerce_area.v
 |   |-- government.v
 |   |-- resource_router4.v
 |   `-- cyber_city_top.v
@@ -85,7 +90,12 @@ Cyber City 採用閉環經濟架構。每個部門都是暫存器化的生產者
 
 - `cyber_city_top`：整合所有部門與資源路由器，是整座城市的 Top Module。
 - `government`：保存城市資金，接收商業區稅收，並以註冊握手介面分配資金。
-- `department`：通用生產部門，供發電廠、淨水廠、住宅區、重工業區與商業區共用。
+- `power_plant`：發電廠，消耗資金與水，產生電力。
+- `water_plant`：淨水廠，消耗資金與電力，產生水。
+- `residential_area`：住宅區，消耗水與電力，產生勞動力。
+- `industry_area`：重工業區，消耗電力與勞動力，產生工業物資。
+- `commerce_area`：商業區，消耗物資、電力與勞動力，產生稅收。
+- `department_core`：五個生產部門共用的握手、庫存、扣料與產出核心。
 - `resource_router4`：單一輸入、四個輸出的 round-robin `valid/ready` 路由器。
 - `city_define.vh`：集中定義資料寬度、初始資源、FSM 狀態與資源上限。
 - `tb_cyber_city`：同時測試新手模式、專家模式與 6-2 挑戰模式，連續模擬 1000 個 clock，若任一模組進入 `S_DEAD` 則測試失敗。
@@ -93,7 +103,12 @@ Cyber City 採用閉環經濟架構。每個部門都是暫存器化的生產者
 ## 檔案說明
 
 - `src/city_define.vh`：共用常數與 FSM 狀態定義。
-- `src/department.v`：具備 `valid/ready` 握手機制的通用生產部門。
+- `src/department_core.v`：生產部門共用核心。
+- `src/power_plant.v`：發電廠部門。
+- `src/water_plant.v`：淨水廠部門。
+- `src/residential_area.v`：住宅區部門。
+- `src/industry_area.v`：重工業區部門。
+- `src/commerce_area.v`：商業區部門。
 - `src/government.v`：中央政府資金仲裁器。
 - `src/resource_router4.v`：round-robin 資源路由器。
 - `src/cyber_city_top.v`：城市整合層。
@@ -102,7 +117,7 @@ Cyber City 採用閉環經濟架構。每個部門都是暫存器化的生產者
 ## 執行模擬
 
 ```powershell
-iverilog -g2012 -I src -o cyber_city_tb.vvp src/department.v src/government.v src/resource_router4.v src/cyber_city_top.v tb/tb_cyber_city.v
+iverilog -g2012 -I src -o cyber_city_tb.vvp src/department_core.v src/power_plant.v src/water_plant.v src/residential_area.v src/industry_area.v src/commerce_area.v src/government.v src/resource_router4.v src/cyber_city_top.v tb/tb_cyber_city.v
 vvp cyber_city_tb.vvp
 ```
 

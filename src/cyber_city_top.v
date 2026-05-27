@@ -96,11 +96,6 @@ module cyber_city_top #(
     wire material_to_com_valid;
     wire material_to_com_ready;
 
-    wire [`DATA_WIDTH-1:0] unused_store0;
-    wire [`DATA_WIDTH-1:0] unused_store1;
-    wire [`DATA_WIDTH-1:0] unused_store2;
-    wire [`DATA_WIDTH-1:0] unused_product;
-
     // 停用的政府資金通道固定 ready，避免意外 valid 脈波卡住仲裁器。
     assign unused_fund2_ready = 1'b1;
     assign unused_fund3_ready = 1'b1;
@@ -139,143 +134,93 @@ module cyber_city_top #(
         .debug_funds(debug_funds)
     );
 
-    // 發電廠：消耗資金與水，產生電力。
-    department #(
-        .COST0(16'd2),
-        .COST1(16'd1),
-        .PRODUCT_AMOUNT(16'd5),
-        .INIT_STORE1(INIT_POWER_WATER)
+    power_plant #(
+        .INIT_WATER_STORE(INIT_POWER_WATER)
     ) u_power_plant (
         .clk(clk),
         .rst_n(rst_n),
-        .in0_data(fund_power_data),
-        .in0_valid(fund_power_valid),
-        .in0_ready(fund_power_ready),
-        .in1_data(water_to_power_data),
-        .in1_valid(water_to_power_valid),
-        .in1_ready(water_to_power_ready),
-        .in2_data(16'd0),
-        .in2_valid(1'b0),
-        .in2_ready(),
-        .out_data(power_out_data),
-        .out_valid(power_out_valid),
-        .out_ready(power_out_ready),
+        .fund_data(fund_power_data),
+        .fund_valid(fund_power_valid),
+        .fund_ready(fund_power_ready),
+        .water_data(water_to_power_data),
+        .water_valid(water_to_power_valid),
+        .water_ready(water_to_power_ready),
+        .power_data(power_out_data),
+        .power_valid(power_out_valid),
+        .power_ready(power_out_ready),
         .state(state_power),
-        .debug_store0(unused_store0),
-        .debug_store1(unused_store1),
-        .debug_store2(unused_store2),
-        .debug_product(debug_power_energy)
+        .debug_energy(debug_power_energy)
     );
 
-    // 淨水廠：消耗資金與電力，產生水。
-    department #(
-        .COST0(16'd2),
-        .COST1(16'd2),
-        .PRODUCT_AMOUNT(16'd5)
-    ) u_water_plant (
+    water_plant u_water_plant (
         .clk(clk),
         .rst_n(rst_n),
-        .in0_data(fund_water_data),
-        .in0_valid(fund_water_valid),
-        .in0_ready(fund_water_ready),
-        .in1_data(power_to_water_data),
-        .in1_valid(power_to_water_valid),
-        .in1_ready(power_to_water_ready),
-        .in2_data(16'd0),
-        .in2_valid(1'b0),
-        .in2_ready(),
-        .out_data(water_out_data),
-        .out_valid(water_out_valid),
-        .out_ready(water_out_ready),
+        .fund_data(fund_water_data),
+        .fund_valid(fund_water_valid),
+        .fund_ready(fund_water_ready),
+        .power_data(power_to_water_data),
+        .power_valid(power_to_water_valid),
+        .power_ready(power_to_water_ready),
+        .water_data(water_out_data),
+        .water_valid(water_out_valid),
+        .water_ready(water_out_ready),
         .state(state_water),
-        .debug_store0(),
-        .debug_store1(),
-        .debug_store2(),
-        .debug_product(debug_water_resource)
+        .debug_water(debug_water_resource)
     );
 
-    // 住宅區：消耗水與電力，產生勞動力。
-    department #(
-        .COST0(16'd1),
-        .COST1(16'd1),
-        .PRODUCT_AMOUNT(16'd3),
-        .INIT_PRODUCT(INIT_RES_LABOR)
+    residential_area #(
+        .INIT_LABOR_STORE(INIT_RES_LABOR)
     ) u_residential (
         .clk(clk),
         .rst_n(rst_n),
-        .in0_data(water_to_res_data),
-        .in0_valid(water_to_res_valid),
-        .in0_ready(water_to_res_ready),
-        .in1_data(power_to_res_data),
-        .in1_valid(power_to_res_valid),
-        .in1_ready(power_to_res_ready),
-        .in2_data(16'd0),
-        .in2_valid(1'b0),
-        .in2_ready(),
-        .out_data(labor_out_data),
-        .out_valid(labor_out_valid),
-        .out_ready(labor_out_ready),
+        .water_data(water_to_res_data),
+        .water_valid(water_to_res_valid),
+        .water_ready(water_to_res_ready),
+        .power_data(power_to_res_data),
+        .power_valid(power_to_res_valid),
+        .power_ready(power_to_res_ready),
+        .labor_data(labor_out_data),
+        .labor_valid(labor_out_valid),
+        .labor_ready(labor_out_ready),
         .state(state_residential),
-        .debug_store0(),
-        .debug_store1(),
-        .debug_store2(),
-        .debug_product(debug_labor_resource)
+        .debug_labor(debug_labor_resource)
     );
 
-    // 重工業區：消耗電力與勞動力，產生工業物資。
-    department #(
-        .COST0(16'd3),
-        .COST1(16'd1),
-        .PRODUCT_AMOUNT(16'd4),
-        .INIT_PRODUCT(INIT_IND_MATERIAL)
+    industry_area #(
+        .INIT_MATERIAL_STORE(INIT_IND_MATERIAL)
     ) u_industry (
         .clk(clk),
         .rst_n(rst_n),
-        .in0_data(power_to_ind_data),
-        .in0_valid(power_to_ind_valid),
-        .in0_ready(power_to_ind_ready),
-        .in1_data(labor_to_ind_data),
-        .in1_valid(labor_to_ind_valid),
-        .in1_ready(labor_to_ind_ready),
-        .in2_data(16'd0),
-        .in2_valid(1'b0),
-        .in2_ready(),
-        .out_data(material_out_data),
-        .out_valid(material_out_valid),
-        .out_ready(material_out_ready),
+        .power_data(power_to_ind_data),
+        .power_valid(power_to_ind_valid),
+        .power_ready(power_to_ind_ready),
+        .labor_data(labor_to_ind_data),
+        .labor_valid(labor_to_ind_valid),
+        .labor_ready(labor_to_ind_ready),
+        .material_data(material_out_data),
+        .material_valid(material_out_valid),
+        .material_ready(material_out_ready),
         .state(state_industry),
-        .debug_store0(),
-        .debug_store1(),
-        .debug_store2(),
-        .debug_product(debug_material_resource)
+        .debug_material(debug_material_resource)
     );
 
-    // 商業區：消耗物資、電力與勞動力，並將稅收回流中央政府。
-    department #(
-        .COST0(16'd2),
-        .COST1(16'd2),
-        .COST2(16'd2),
-        .PRODUCT_AMOUNT(16'd10)
-    ) u_commerce (
+    commerce_area u_commerce (
         .clk(clk),
         .rst_n(rst_n),
-        .in0_data(material_to_com_data),
-        .in0_valid(material_to_com_valid),
-        .in0_ready(material_to_com_ready),
-        .in1_data(power_to_com_data),
-        .in1_valid(power_to_com_valid),
-        .in1_ready(power_to_com_ready),
-        .in2_data(labor_to_com_data),
-        .in2_valid(labor_to_com_valid),
-        .in2_ready(labor_to_com_ready),
-        .out_data(tax_data),
-        .out_valid(tax_valid),
-        .out_ready(tax_ready),
+        .material_data(material_to_com_data),
+        .material_valid(material_to_com_valid),
+        .material_ready(material_to_com_ready),
+        .power_data(power_to_com_data),
+        .power_valid(power_to_com_valid),
+        .power_ready(power_to_com_ready),
+        .labor_data(labor_to_com_data),
+        .labor_valid(labor_to_com_valid),
+        .labor_ready(labor_to_com_ready),
+        .tax_data(tax_data),
+        .tax_valid(tax_valid),
+        .tax_ready(tax_ready),
         .state(state_commerce),
-        .debug_store0(),
-        .debug_store1(),
-        .debug_store2(),
-        .debug_product(debug_commerce_funds)
+        .debug_funds(debug_commerce_funds)
     );
 
     // 電力有四個下游消費者。
